@@ -50,6 +50,10 @@
                 <dataType>text</dataType>
                 <label translate="true">Entity Type</label>
                 <dataScope>entity_type</dataScope>
+                <notice translate="true">The type of content this hreflang group maps across stores.</notice>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
             </settings>
             <formElements>
                 <select>
@@ -77,6 +81,7 @@
                 <dataType>text</dataType>
                 <label translate="true">Group Code</label>
                 <dataScope>code</dataScope>
+                <notice translate="true">Internal identifier — admin-only reference, not rendered on the storefront.</notice>
                 <validation>
                     <rule name="required-entry" xsi:type="boolean">true</rule>
                 </validation>
@@ -107,20 +112,104 @@
     <fieldset name="members">
         <settings>
             <label translate="true">Members</label>
+            <collapsible>false</collapsible>
         </settings>
-        <field name="members_note" formElement="input">
+        <container name="members_hint" component="Magento_Ui/js/form/components/html" sortOrder="1">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
-                    <item name="notice" xsi:type="string" translate="true">Hreflang members are managed separately after saving the group.</item>
-                    <item name="visible" xsi:type="boolean">true</item>
-                    <item name="disabled" xsi:type="boolean">true</item>
+                    <item name="content" xsi:type="string" translate="true"><![CDATA[<p style="margin:0 0 1em 0;color:#666;">Add one row per store view that participates in this hreflang group. Leave the <strong>URL</strong> blank to auto-resolve from the entity's URL rewrite on save. Exactly one row should be marked <strong>Is Default</strong> — that row's URL becomes the <code>x-default</code> alternate emitted on the storefront.</p>]]></item>
+                    <item name="additionalClasses" xsi:type="string">admin__field-wide</item>
                 </item>
             </argument>
+        </container>
+        <dynamicRows name="hreflang_members" sortOrder="10">
             <settings>
-                <dataType>text</dataType>
-                <label translate="true">Note</label>
-                <dataScope>members_note</dataScope>
+                <addButtonLabel translate="true">Add Member</addButtonLabel>
+                <label/>
+                <componentType>dynamicRows</componentType>
+                <dataScope>hreflang_members</dataScope>
+                <deleteProperty>is_removed</deleteProperty>
+                <deleteValue>1</deleteValue>
             </settings>
-        </field>
+            <container name="record" component="Magento_Ui/js/dynamic-rows/record">
+                <argument name="data" xsi:type="array">
+                    <item name="config" xsi:type="array">
+                        <item name="isTemplate" xsi:type="boolean">true</item>
+                        <item name="is_collection" xsi:type="boolean">true</item>
+                        <item name="componentType" xsi:type="string">container</item>
+                    </item>
+                </argument>
+                <field name="member_id" formElement="input">
+                    <settings>
+                        <dataType>text</dataType>
+                        <visible>false</visible>
+                        <dataScope>member_id</dataScope>
+                    </settings>
+                </field>
+                <field name="store_id" formElement="select" sortOrder="10">
+                    <settings>
+                        <dataType>text</dataType>
+                        <label translate="true">Store View</label>
+                        <dataScope>store_id</dataScope>
+                        <validation>
+                            <rule name="required-entry" xsi:type="boolean">true</rule>
+                        </validation>
+                    </settings>
+                    <formElements>
+                        <select>
+                            <settings>
+                                <options class="Magento\Config\Model\Config\Source\Store"/>
+                            </settings>
+                        </select>
+                    </formElements>
+                </field>
+                <field name="entity_id" formElement="input" sortOrder="20">
+                    <settings>
+                        <dataType>text</dataType>
+                        <label translate="true">Entity ID</label>
+                        <dataScope>entity_id</dataScope>
+                        <notice translate="true">Product / Category / CMS Page ID on that store view.</notice>
+                        <validation>
+                            <rule name="required-entry" xsi:type="boolean">true</rule>
+                            <rule name="validate-digits" xsi:type="boolean">true</rule>
+                        </validation>
+                    </settings>
+                </field>
+                <field name="locale" formElement="input" sortOrder="30">
+                    <settings>
+                        <dataType>text</dataType>
+                        <label translate="true">Locale</label>
+                        <dataScope>locale</dataScope>
+                        <notice translate="true">Optional BCP 47 locale (e.g. en-GB). Leave blank to use the store's Magento locale.</notice>
+                    </settings>
+                </field>
+                <field name="url" formElement="input" sortOrder="40">
+                    <settings>
+                        <dataType>text</dataType>
+                        <label translate="true">URL</label>
+                        <dataScope>url</dataScope>
+                        <notice translate="true">Leave blank to auto-resolve from the entity's URL rewrite on save.</notice>
+                    </settings>
+                </field>
+                <field name="is_default" formElement="checkbox" sortOrder="50">
+                    <settings>
+                        <dataType>number</dataType>
+                        <label translate="true">Is Default</label>
+                        <dataScope>is_default</dataScope>
+                    </settings>
+                    <formElements>
+                        <checkbox>
+                            <settings>
+                                <valueMap>
+                                    <map name="false" xsi:type="number">0</map>
+                                    <map name="true" xsi:type="number">1</map>
+                                </valueMap>
+                                <prefer>toggle</prefer>
+                            </settings>
+                        </checkbox>
+                    </formElements>
+                </field>
+            </container>
+        </dynamicRows>
     </fieldset>
 </form>

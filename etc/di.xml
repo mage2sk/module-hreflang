@@ -23,4 +23,14 @@
         </arguments>
     </type>
 
+    <!--
+        Form DataProvider: loads groups + their members so the admin form's
+        dynamicRows members editor can populate.
+    -->
+    <type name="Panth\Hreflang\Ui\Component\Form\DataProvider\HreflangFormDataProvider">
+        <arguments>
+            <argument name="collection" xsi:type="object">Panth\Hreflang\Model\ResourceModel\HreflangGroup\Collection</argument>
+        </arguments>
+    </type>
+
 </config>

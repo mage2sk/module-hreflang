@@ -59,14 +59,15 @@ class HreflangFormDataProvider extends GenericFormDataProvider
                 ->order('member_id ASC')
         );
 
-        // The dynamicRows component wants scalar-typed ids the JS can match
-        // against its identificationProperty; cast everything consistently.
+        // dynamicRows + KO checkbox valueMap does strict string comparison
+        // on initial hydration, so pass scalars as strings — `1`/`0` not
+        // integers — otherwise the Is Default toggle always renders as No.
         foreach ($rows as &$row) {
-            $row['member_id'] = (int) $row['member_id'];
-            $row['group_id']  = (int) $row['group_id'];
-            $row['store_id']  = (int) $row['store_id'];
-            $row['entity_id'] = (int) $row['entity_id'];
-            $row['is_default'] = (int) $row['is_default'];
+            $row['member_id'] = (string) (int) $row['member_id'];
+            $row['group_id']  = (string) (int) $row['group_id'];
+            $row['store_id']  = (string) (int) $row['store_id'];
+            $row['entity_id'] = (string) (int) $row['entity_id'];
+            $row['is_default'] = (int) $row['is_default'] === 1 ? '1' : '0';
         }
 
         return $rows;

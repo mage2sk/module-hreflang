@@ -17,6 +17,10 @@
 [![Website](https://img.shields.io/badge/Website-kishansavaliya.com-0D9488)](https://kishansavaliya.com)
 [![Get a Quote](https://img.shields.io/badge/Get%20a%20Quote-Free%20Estimate-DC2626)](https://kishansavaliya.com/get-quote)
 
+<p align="center">
+  <img src="docs/images/hero-banner.png" alt="Panth Hreflang — Google is picking the wrong version of your product pages. Without the module, a UK shopper searching for a leather backpack gets the US SERP card with USD pricing. With Panth Hreflang, they see the UK SERP card with £ pricing. Google serves the right localized version to the right shopper." width="100%" />
+</p>
+
 > **Every multi-store Magento catalog gets hreflang wrong the first time.** The core `Magento_Store` module does not emit `<link rel="alternate" hreflang>` tags on any page, so Google treats two localized versions of `/women/tops` as duplicate content and picks one to index — arbitrarily. **Panth Hreflang** adds the missing layer: admin-managed groups that pair any `product`, `category` or `cms_page` across store views, automatic `x-default` emission, locale fallback to the store's Magento locale (`general/locale/code` converted to BCP 47), URL auto-resolution from `url_rewrite` on save, a three-way CMS matching strategy for the common case where you don't need to create a group per page, and a self-diagnostic on the config page that flags common misconfigurations before you ship. Theme-agnostic — the rendering path is a head block + plain phtml, so the exact same `<link>` tags ship on Hyva and Luma with zero template overrides.
 
 Single-locale stores still benefit: the ViewModel emits a self-referencing `x-default` so the page always declares its intent to search engines. Store-assignment edge cases (a product that exists on store 1 and 3 but not 2) are handled by the scope setting — `website` restricts hreflang to stores in the same website, `global` includes every storefront store. Deactivating a group from the grid immediately stops its tags from rendering, so you can stage content without forcing a cache flush.

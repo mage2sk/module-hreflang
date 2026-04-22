@@ -227,11 +227,12 @@ class Resolver implements HreflangResolverInterface
             ];
         }
 
-        if ($alternates === []) {
+        // Need ≥2 distinct locales for hreflang to be meaningful — otherwise
+        // the ViewModel will emit a clean self-referencing x-default.
+        if (count($alternates) < 2) {
             return [];
         }
 
-        // Emit x-default if configured.
         if ($this->config->emitHreflangXDefault($storeId)) {
             $hasDefault = false;
             foreach ($alternates as $alt) {
@@ -249,7 +250,7 @@ class Resolver implements HreflangResolverInterface
             }
         }
 
-        return count($alternates) >= 2 ? $alternates : [];
+        return $alternates;
     }
 
     /**
@@ -290,7 +291,15 @@ class Resolver implements HreflangResolverInterface
             ];
         }
 
-        if (!$hasDefault && $this->config->emitHreflangXDefault($storeId) && $alternates !== []) {
+        // hreflang tags are only meaningful when at least two distinct
+        // locales point at each other. Adding x-default on top of a single
+        // locale produces noise — emit nothing and let the ViewModel fall
+        // back to a clean self-referencing x-default.
+        if (count($alternates) < 2) {
+            return [];
+        }
+
+        if (!$hasDefault && $this->config->emitHreflangXDefault($storeId)) {
             $alternates[] = [
                 'locale'     => 'x-default',
                 'url'        => $alternates[0]['url'],

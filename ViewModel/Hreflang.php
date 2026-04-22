@@ -3,9 +3,13 @@ declare(strict_types=1);
 
 namespace Panth\Hreflang\ViewModel;
 
+use Magento\Cms\Helper\Page as CmsPageHelper;
+use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Registry;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
+use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Panth\Hreflang\Api\HreflangResolverInterface;
 use Panth\Hreflang\Helper\Config;
@@ -13,8 +17,13 @@ use Panth\Hreflang\Helper\Config;
 /**
  * ViewModel powering the storefront hreflang block.
  *
- * Detects the current entity (product/category/cms) from the layout registry
- * and delegates alternates resolution to {@see HreflangResolverInterface}.
+ * Detects the current entity (product/category/cms) and delegates alternates
+ * resolution to {@see HreflangResolverInterface}.
+ *
+ * CMS detection on the storefront deliberately does NOT rely on the `cms_page`
+ * registry key — Magento only populates that key in the admin edit controller.
+ * Instead we match on the controller's full action name and resolve the page
+ * id either from the request (cms_page_view) or from store config (home).
  */
 class Hreflang implements ArgumentInterface
 {
@@ -23,13 +32,12 @@ class Hreflang implements ArgumentInterface
         private readonly Registry $registry,
         private readonly RequestInterface $request,
         private readonly StoreManagerInterface $storeManager,
-        private readonly Config $config
+        private readonly Config $config,
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly ResourceConnection $resource
     ) {
     }
 
-    /**
-     * Whether hreflang emission is enabled for the current store.
-     */
     public function isEnabled(): bool
     {
         try {
@@ -55,11 +63,8 @@ class Hreflang implements ArgumentInterface
                 $alternates = $this->resolver->getAlternates($type, $id, $storeId);
             }
 
-            // If no alternates from resolver, add self-referencing x-default.
-            // This is Google best practice even for single-language sites.
             if ($alternates === []) {
                 $currentUrl = $this->storeManager->getStore()->getCurrentUrl(false);
-                // Strip query params for clean hreflang URL
                 $cleanUrl = strtok((string) $currentUrl, '?');
                 if ($cleanUrl !== false && $cleanUrl !== '') {
                     $alternates[] = [
@@ -77,8 +82,6 @@ class Hreflang implements ArgumentInterface
     }
 
     /**
-     * Detect the current entity (product / category / cms).
-     *
      * @return array{0:?string,1:int}
      */
     private function detectEntity(): array
@@ -91,10 +94,66 @@ class Hreflang implements ArgumentInterface
         if ($category !== null && $category->getId()) {
             return [HreflangResolverInterface::ENTITY_CATEGORY, (int) $category->getId()];
         }
+
+        // CMS page detection — registry fallback first (admin / custom
+        // integrations), then action-name based lookup for the storefront.
         $cmsPage = $this->registry->registry('cms_page');
         if ($cmsPage !== null && $cmsPage->getId()) {
             return [HreflangResolverInterface::ENTITY_CMS, (int) $cmsPage->getId()];
         }
+
+        $cmsPageId = $this->detectCmsPageId();
+        if ($cmsPageId !== null) {
+            return [HreflangResolverInterface::ENTITY_CMS, $cmsPageId];
+        }
+
         return [null, 0];
+    }
+
+    /**
+     * Resolve the CMS page id for the current storefront request using the
+     * matched full-action-name. Returns null when not on a CMS page.
+     */
+    private function detectCmsPageId(): ?int
+    {
+        $action = (string) $this->request->getFullActionName();
+
+        if ($action === 'cms_index_index') {
+            $identifier = (string) $this->scopeConfig->getValue(
+                CmsPageHelper::XML_PATH_HOME_PAGE,
+                ScopeInterface::SCOPE_STORE
+            );
+            if ($identifier === '') {
+                return null;
+            }
+            return $this->lookupCmsPageIdByIdentifier($identifier);
+        }
+
+        if ($action === 'cms_page_view') {
+            $paramId = $this->request->getParam('page_id')
+                ?? $this->request->getParam('id');
+            if ($paramId !== null && (int) $paramId > 0) {
+                return (int) $paramId;
+            }
+        }
+
+        return null;
+    }
+
+    private function lookupCmsPageIdByIdentifier(string $identifier): ?int
+    {
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName('cms_page');
+
+        $id = $connection->fetchOne(
+            $connection->select()
+                ->from($table, ['page_id'])
+                ->where('identifier = ?', $identifier)
+                ->where('is_active = ?', 1)
+                ->order('page_id ASC')
+                ->limit(1)
+        );
+
+        return $id !== false && (int) $id > 0 ? (int) $id : null;
     }
 }

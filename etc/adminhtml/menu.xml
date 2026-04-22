@@ -2,12 +2,27 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
     <menu>
-        <add id="Panth_Hreflang::hreflang"
+        <add id="Panth_Hreflang::root"
              title="Hreflang"
              module="Panth_Hreflang"
              parent="Panth_Core::panth_extensions"
              sortOrder="55"
+             resource="Panth_Hreflang::manage"/>
+
+        <add id="Panth_Hreflang::hreflang"
+             title="Hreflang Mapping"
+             module="Panth_Hreflang"
+             parent="Panth_Hreflang::root"
+             sortOrder="10"
              action="panth_hreflang/hreflang/index"
              resource="Panth_Hreflang::hreflang"/>
+
+        <add id="Panth_Hreflang::config"
+             title="Configuration"
+             module="Panth_Hreflang"
+             parent="Panth_Hreflang::root"
+             sortOrder="20"
+             action="adminhtml/system_config/edit/section/panth_hreflang"
+             resource="Panth_Hreflang::config"/>
     </menu>
 </config>

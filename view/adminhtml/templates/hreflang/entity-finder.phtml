@@ -31,7 +31,9 @@ $searchUrl = $block->getSearchUrl();
 </style>
 
 <div class="hf-finder-wrap">
-    <strong><?= $escaper->escapeHtml(__('Find Entity ID')) ?>:</strong>
+    <div style="margin-bottom:6px;"><strong><?= $escaper->escapeHtml(__('Find Entity ID')) ?>:</strong>
+        <span style="color:#666;font-size:12px;"><?= $escaper->escapeHtml(__('Entity IDs in member rows are interpreted according to the group\'s Entity Type. Use the matching button below to look one up by name.')) ?></span>
+    </div>
     <button type="button" class="action-default scalable hf-finder-btn" data-hf-find="product">
         <span><?= $escaper->escapeHtml(__('Browse Products...')) ?></span>
     </button>
@@ -41,7 +43,7 @@ $searchUrl = $block->getSearchUrl();
     <button type="button" class="action-default scalable hf-finder-btn" data-hf-find="cms_page">
         <span><?= $escaper->escapeHtml(__('Browse CMS Pages...')) ?></span>
     </button>
-    <span style="color:#666;font-size:12px;"><?= $escaper->escapeHtml(__('Pick from a list instead of typing the ID into a member row.')) ?></span>
+    <span id="hf-finder-hint" style="color:#eb5202;font-size:12px;margin-left:8px;display:none;"></span>
 </div>
 
 <div class="hf-finder-modal" id="hf-finder-modal">
@@ -141,9 +143,67 @@ $searchUrl = $block->getSearchUrl();
             }
         }
 
-        document.querySelectorAll('[data-hf-find]').forEach(function (btn) {
-            btn.addEventListener('click', function () { open(btn.getAttribute('data-hf-find')); });
+        var buttons = Array.prototype.slice.call(document.querySelectorAll('[data-hf-find]'));
+        var hint = document.getElementById('hf-finder-hint');
+
+        function findEntityTypeSelect() {
+            // Magento UI components render a hidden input with the form field
+            // name alongside the select. The input keeps the authoritative
+            // value and fires a native change event when the select changes.
+            return document.querySelector(
+                'input[name="entity_type"], select[name="entity_type"]'
+            );
+        }
+
+        function syncButtonsToType() {
+            var el = findEntityTypeSelect();
+            var type = el ? String(el.value || '') : '';
+            buttons.forEach(function (btn) {
+                var btnType = btn.getAttribute('data-hf-find');
+                var match = type === '' || btnType === type;
+                btn.disabled = !match;
+                btn.style.opacity = match ? '1' : '0.4';
+                btn.style.cursor = match ? 'pointer' : 'not-allowed';
+            });
+            if (hint) {
+                if (type === '') {
+                    hint.style.display = 'inline';
+                    hint.textContent = 'Pick an Entity Type above to enable the matching browser.';
+                } else {
+                    hint.style.display = 'none';
+                }
+            }
+        }
+
+        buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (btn.disabled) { return; }
+                open(btn.getAttribute('data-hf-find'));
+            });
         });
+
+        // Watch for entity_type changes. The KO-driven select in the form may
+        // hydrate asynchronously, so poll briefly and attach a listener once
+        // found. Also rebind when the DOM mutates (form re-renders on save).
+        var wired = false;
+        function wire() {
+            if (wired) return;
+            var el = findEntityTypeSelect();
+            if (!el) return;
+            wired = true;
+            el.addEventListener('change', syncButtonsToType);
+            // Bubbled changes from inner selects (KO binds to a hidden input
+            // but user-facing select emits change on the visible element too).
+            document.addEventListener('change', function (e) {
+                if (e.target && (e.target.name === 'entity_type' || (e.target.closest && e.target.closest('[data-index="entity_type"]')))) {
+                    setTimeout(syncButtonsToType, 0);
+                }
+            }, true);
+            syncButtonsToType();
+        }
+        wire();
+        var pollTimer = setInterval(function () { wire(); if (wired) clearInterval(pollTimer); }, 300);
+        setTimeout(function () { clearInterval(pollTimer); }, 10000);
         modal.querySelector('.hf-finder-close').addEventListener('click', close);
         modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
         searchBtn.addEventListener('click', doSearch);

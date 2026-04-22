@@ -45,12 +45,17 @@
                 <dataType>text</dataType>
             </settings>
         </field>
-        <field name="entity_type" formElement="select">
+        <field name="entity_type" formElement="select" sortOrder="5">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="source" xsi:type="string">hreflang_group</item>
+                </item>
+            </argument>
             <settings>
                 <dataType>text</dataType>
                 <label translate="true">Entity Type</label>
                 <dataScope>entity_type</dataScope>
-                <notice translate="true">The type of content this hreflang group maps across stores.</notice>
+                <notice translate="true">The type of content this hreflang group maps across stores. Members are interpreted as this type on save.</notice>
                 <validation>
                     <rule name="required-entry" xsi:type="boolean">true</rule>
                 </validation>
@@ -58,25 +63,12 @@
             <formElements>
                 <select>
                     <settings>
-                        <options>
-                            <option name="product" xsi:type="array">
-                                <item name="value" xsi:type="string">product</item>
-                                <item name="label" xsi:type="string" translate="true">Product</item>
-                            </option>
-                            <option name="category" xsi:type="array">
-                                <item name="value" xsi:type="string">category</item>
-                                <item name="label" xsi:type="string" translate="true">Category</item>
-                            </option>
-                            <option name="cms_page" xsi:type="array">
-                                <item name="value" xsi:type="string">cms_page</item>
-                                <item name="label" xsi:type="string" translate="true">CMS Page</item>
-                            </option>
-                        </options>
+                        <options class="Panth\Hreflang\Model\Config\Source\EntityType"/>
                     </settings>
                 </select>
             </formElements>
         </field>
-        <field name="code" formElement="input">
+        <field name="code" formElement="input" sortOrder="10">
             <settings>
                 <dataType>text</dataType>
                 <label translate="true">Group Code</label>
@@ -87,14 +79,14 @@
                 </validation>
             </settings>
         </field>
-        <field name="notes" formElement="textarea">
+        <field name="notes" formElement="textarea" sortOrder="20">
             <settings>
                 <dataType>text</dataType>
                 <label translate="true">Notes</label>
                 <dataScope>notes</dataScope>
             </settings>
         </field>
-        <field name="is_active" formElement="select">
+        <field name="is_active" formElement="select" sortOrder="30">
             <settings>
                 <dataType>number</dataType>
                 <label translate="true">Active</label>

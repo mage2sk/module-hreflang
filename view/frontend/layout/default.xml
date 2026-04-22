@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+  Panth_Hreflang: register the hreflang head block on the default handle.
+  Hyva + Luma safe: no JS, no RequireJS, no x-magento-init — server-rendered
+  via ViewModel.
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceBlock name="head.additional">
+            <block class="Panth\Hreflang\Block\Head\Hreflang"
+                   name="panth_hreflang.head"
+                   template="Panth_Hreflang::head/hreflang.phtml"
+                   cacheable="true">
+                <arguments>
+                    <argument name="view_model" xsi:type="object">Panth\Hreflang\ViewModel\Hreflang</argument>
+                </arguments>
+            </block>
+        </referenceBlock>
+    </body>
+</page>

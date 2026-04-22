@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Indexer/etc/indexer.xsd">
+    <indexer id="panth_seo_hreflang"
+             view_id="panth_seo_hreflang"
+             class="Panth\Hreflang\Model\Indexer\Hreflang">
+        <title translate="true">Panth SEO Hreflang</title>
+        <description translate="true">Builds the hreflang alternates payload per entity.</description>
+    </indexer>
+</config>

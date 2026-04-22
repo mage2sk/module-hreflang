@@ -267,7 +267,8 @@ class Resolver implements HreflangResolverInterface
 
         $alternates = [];
         $seen = [];
-        $hasDefault = false;
+        $defaultUrl = null;
+        $hasExplicitXDefault = false;
 
         foreach ($rows as $row) {
             $locale = (string) $row['locale'];
@@ -281,8 +282,11 @@ class Resolver implements HreflangResolverInterface
                 continue;
             }
             $seen[$key] = true;
-            if ($isDefault || $locale === 'x-default') {
-                $hasDefault = true;
+            if ($key === 'x-default') {
+                $hasExplicitXDefault = true;
+            }
+            if ($isDefault && $defaultUrl === null) {
+                $defaultUrl = $url;
             }
             $alternates[] = [
                 'locale'     => $locale,
@@ -292,17 +296,17 @@ class Resolver implements HreflangResolverInterface
         }
 
         // hreflang tags are only meaningful when at least two distinct
-        // locales point at each other. Adding x-default on top of a single
-        // locale produces noise — emit nothing and let the ViewModel fall
-        // back to a clean self-referencing x-default.
+        // locales point at each other.
         if (count($alternates) < 2) {
             return [];
         }
 
-        if (!$hasDefault && $this->config->emitHreflangXDefault($storeId)) {
+        // Emit x-default as a SEPARATE alternate (Google's recommendation).
+        // Source URL: explicit x-default row > is_default row > first row.
+        if (!$hasExplicitXDefault && $this->config->emitHreflangXDefault($storeId)) {
             $alternates[] = [
                 'locale'     => 'x-default',
-                'url'        => $alternates[0]['url'],
+                'url'        => $defaultUrl ?? $alternates[0]['url'],
                 'is_default' => true,
             ];
         }

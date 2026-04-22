@@ -122,6 +122,9 @@
                 </item>
             </argument>
         </container>
+        <htmlContent name="entity_finder" sortOrder="5">
+            <block class="Panth\Hreflang\Block\Adminhtml\Hreflang\Edit\EntityFinder" name="panth_hreflang_entity_finder"/>
+        </htmlContent>
         <dynamicRows name="hreflang_members" sortOrder="10">
             <settings>
                 <addButtonLabel translate="true">Add Member</addButtonLabel>

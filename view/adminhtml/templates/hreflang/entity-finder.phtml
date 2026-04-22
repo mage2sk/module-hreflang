@@ -1,0 +1,158 @@
+<?php
+/**
+ * @var \Panth\Hreflang\Block\Adminhtml\Hreflang\Edit\EntityFinder $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+$searchUrl = $block->getSearchUrl();
+?>
+<style>
+    .hf-finder-wrap { margin-bottom: 12px; }
+    .hf-finder-btn { margin-right: 8px; }
+    .hf-finder-modal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.5); }
+    .hf-finder-modal.open { display:block; }
+    .hf-finder-box { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:85%; max-width:900px; max-height:85vh; background:#fff; border-radius:4px; box-shadow:0 4px 20px rgba(0,0,0,0.3); display:flex; flex-direction:column; }
+    .hf-finder-head { padding:12px 16px; border-bottom:1px solid #e8e8e8; display:flex; justify-content:space-between; align-items:center; background:#f5f5f5; flex-shrink:0; }
+    .hf-finder-head strong { font-size:14px; }
+    .hf-finder-close { background:none; border:none; font-size:22px; cursor:pointer; color:#999; padding:0 4px; line-height:1; }
+    .hf-finder-close:hover { color:#333; }
+    .hf-finder-tools { padding:10px 16px; border-bottom:1px solid #e8e8e8; display:flex; gap:10px; align-items:center; flex-shrink:0; }
+    .hf-finder-tools select, .hf-finder-tools input { height:32px; box-sizing:border-box; }
+    .hf-finder-tools input { flex:1; }
+    .hf-finder-body { flex:1; overflow-y:auto; padding:0; }
+    .hf-finder-body table { width:100%; border-collapse:collapse; font-size:13px; }
+    .hf-finder-body th { position:sticky; top:0; background:#f5f5f5; text-align:left; padding:8px 12px; border-bottom:1px solid #e8e8e8; font-weight:600; }
+    .hf-finder-body td { padding:8px 12px; border-bottom:1px solid #f0f0f0; }
+    .hf-finder-body tr { cursor:pointer; }
+    .hf-finder-body tr:hover td { background:#fffbeb; }
+    .hf-finder-empty { padding:24px; text-align:center; color:#999; }
+    .hf-finder-foot { padding:8px 16px; border-top:1px solid #e8e8e8; font-size:11px; color:#999; flex-shrink:0; }
+    .hf-pick-btn { display:inline-flex; align-items:center; gap:4px; background:#fff; border:1px solid #adadad; border-radius:3px; padding:2px 8px; font-size:11px; cursor:pointer; color:#333; margin-left:6px; white-space:nowrap; }
+    .hf-pick-btn:hover { background:#eee; border-color:#333; }
+</style>
+
+<div class="hf-finder-wrap">
+    <strong><?= $escaper->escapeHtml(__('Find Entity ID')) ?>:</strong>
+    <button type="button" class="action-default scalable hf-finder-btn" data-hf-find="product">
+        <span><?= $escaper->escapeHtml(__('Browse Products...')) ?></span>
+    </button>
+    <button type="button" class="action-default scalable hf-finder-btn" data-hf-find="category">
+        <span><?= $escaper->escapeHtml(__('Browse Categories...')) ?></span>
+    </button>
+    <button type="button" class="action-default scalable hf-finder-btn" data-hf-find="cms_page">
+        <span><?= $escaper->escapeHtml(__('Browse CMS Pages...')) ?></span>
+    </button>
+    <span style="color:#666;font-size:12px;"><?= $escaper->escapeHtml(__('Pick from a list instead of typing the ID into a member row.')) ?></span>
+</div>
+
+<div class="hf-finder-modal" id="hf-finder-modal">
+    <div class="hf-finder-box">
+        <div class="hf-finder-head">
+            <strong id="hf-finder-title"><?= $escaper->escapeHtml(__('Find Entity')) ?></strong>
+            <button type="button" class="hf-finder-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="hf-finder-tools">
+            <input type="search" id="hf-finder-q" placeholder="<?= $escaper->escapeHtmlAttr(__('Search by name, SKU, identifier or numeric ID')) ?>" autocomplete="off"/>
+            <button type="button" class="action-default scalable" id="hf-finder-search-btn"><span><?= $escaper->escapeHtml(__('Search')) ?></span></button>
+        </div>
+        <div class="hf-finder-body" id="hf-finder-body">
+            <div class="hf-finder-empty"><?= $escaper->escapeHtml(__('Enter a search term above and press Search.')) ?></div>
+        </div>
+        <div class="hf-finder-foot">
+            <?= $escaper->escapeHtml(__('Click a row to copy its ID to the clipboard. Paste it into the Entity ID field of your chosen member row.')) ?>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        'use strict';
+        var modal  = document.getElementById('hf-finder-modal');
+        var title  = document.getElementById('hf-finder-title');
+        var input  = document.getElementById('hf-finder-q');
+        var body   = document.getElementById('hf-finder-body');
+        var searchBtn = document.getElementById('hf-finder-search-btn');
+        var searchUrl = <?= /* @noEscape */ json_encode($searchUrl) ?>;
+        var currentType = 'product';
+
+        function open(type) {
+            currentType = type;
+            var label = type === 'category' ? 'Categories' : (type === 'cms_page' ? 'CMS Pages' : 'Products');
+            title.textContent = 'Find Entity — ' + label;
+            modal.classList.add('open');
+            input.value = '';
+            body.innerHTML = '<div class="hf-finder-empty">Enter a search term or press Search to list the first 50.</div>';
+            setTimeout(function () { input.focus(); }, 100);
+            doSearch();
+        }
+        function close() { modal.classList.remove('open'); }
+
+        function doSearch() {
+            body.innerHTML = '<div class="hf-finder-empty">Searching...</div>';
+            var url = searchUrl
+                + (searchUrl.indexOf('?') > -1 ? '&' : '?')
+                + 'type=' + encodeURIComponent(currentType)
+                + '&q=' + encodeURIComponent(input.value || '')
+                + '&isAjax=1';
+            fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    var items = (data && data.items) || [];
+                    if (items.length === 0) {
+                        body.innerHTML = '<div class="hf-finder-empty">No matches.</div>';
+                        return;
+                    }
+                    var rows = items.map(function (i) {
+                        var idText = String(i.id);
+                        var labelText = (i.label || '').replace(/[<>&]/g, function (m) { return { '<':'&lt;', '>':'&gt;', '&':'&amp;' }[m]; });
+                        return '<tr data-id="' + idText + '">'
+                            +    '<td style="width:80px;"><strong>' + idText + '</strong></td>'
+                            +    '<td>' + labelText
+                            +    ' <button type="button" class="hf-pick-btn" data-pick="' + idText + '">Copy ID</button>'
+                            +    '</td>'
+                            + '</tr>';
+                    }).join('');
+                    body.innerHTML = '<table><thead><tr><th>ID</th><th>Name</th></tr></thead><tbody>' + rows + '</tbody></table>';
+                })
+                .catch(function () {
+                    body.innerHTML = '<div class="hf-finder-empty" style="color:#e22626;">Search failed. Check the browser console.</div>';
+                });
+        }
+
+        function copyId(id) {
+            var ok = false;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try { navigator.clipboard.writeText(String(id)); ok = true; } catch (e) {}
+            }
+            if (!ok) {
+                var ta = document.createElement('textarea');
+                ta.value = String(id);
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); ok = true; } catch (e) {}
+                document.body.removeChild(ta);
+            }
+            if (ok && typeof window.alert === 'function') {
+                // Subtle feedback instead of alert: briefly highlight the row.
+                var tr = body.querySelector('tr[data-id="' + id + '"]');
+                if (tr) {
+                    tr.style.background = '#fef3c7';
+                    setTimeout(function () { tr.style.background = ''; }, 800);
+                }
+            }
+        }
+
+        document.querySelectorAll('[data-hf-find]').forEach(function (btn) {
+            btn.addEventListener('click', function () { open(btn.getAttribute('data-hf-find')); });
+        });
+        modal.querySelector('.hf-finder-close').addEventListener('click', close);
+        modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+        searchBtn.addEventListener('click', doSearch);
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+        body.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-pick]');
+            if (btn) { e.preventDefault(); e.stopPropagation(); copyId(btn.getAttribute('data-pick')); return; }
+            var tr = e.target.closest('tr[data-id]');
+            if (tr) copyId(tr.getAttribute('data-id'));
+        });
+    })();
+</script>

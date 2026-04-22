@@ -118,14 +118,21 @@
             <block class="Panth\Hreflang\Block\Adminhtml\Hreflang\Edit\EntityFinder" name="panth_hreflang_entity_finder"/>
         </htmlContent>
         <dynamicRows name="hreflang_members" sortOrder="10">
-            <settings>
-                <addButtonLabel translate="true">Add Member</addButtonLabel>
-                <label/>
-                <componentType>dynamicRows</componentType>
-                <dataScope>hreflang_members</dataScope>
-                <deleteProperty>is_removed</deleteProperty>
-                <deleteValue>1</deleteValue>
-            </settings>
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="addButtonLabel" xsi:type="string" translate="true">Add Member</item>
+                    <item name="componentType" xsi:type="string">dynamicRows</item>
+                    <item name="recordTemplate" xsi:type="string">record</item>
+                    <item name="dataScope" xsi:type="string">hreflang_members</item>
+                    <item name="deleteProperty" xsi:type="string">is_removed</item>
+                    <item name="deleteValue" xsi:type="string">1</item>
+                    <item name="columnsHeader" xsi:type="boolean">true</item>
+                    <item name="addButton" xsi:type="boolean">true</item>
+                    <item name="dndConfig" xsi:type="array">
+                        <item name="enabled" xsi:type="boolean">false</item>
+                    </item>
+                </item>
+            </argument>
             <container name="record" component="Magento_Ui/js/dynamic-rows/record">
                 <argument name="data" xsi:type="array">
                     <item name="config" xsi:type="array">

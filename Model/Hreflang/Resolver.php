@@ -114,14 +114,19 @@ class Resolver implements HreflangResolverInterface
     {
         $connection = $this->resource->getConnection();
         $memberTable = $this->resource->getTableName('panth_seo_hreflang_member');
+        $groupTable  = $this->resource->getTableName('panth_seo_hreflang_group');
 
-        // Find the group the entity belongs to.
+        // Find the ACTIVE group the entity belongs to. Deactivated groups
+        // stay in the DB (for admin review) but must not leak onto the
+        // storefront.
         $groupId = (int) $connection->fetchOne(
             $connection->select()
-                ->from($memberTable, ['group_id'])
-                ->where('entity_type = ?', $entityType)
-                ->where('entity_id = ?', $entityId)
-                ->where('store_id = ?', $storeId)
+                ->from(['m' => $memberTable], ['group_id'])
+                ->join(['g' => $groupTable], 'g.group_id = m.group_id', [])
+                ->where('m.entity_type = ?', $entityType)
+                ->where('m.entity_id = ?', $entityId)
+                ->where('m.store_id = ?', $storeId)
+                ->where('g.is_active = ?', 1)
                 ->limit(1)
         );
         if ($groupId <= 0) {

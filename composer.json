@@ -1,13 +1,30 @@
 {
     "name": "mage2kishan/module-hreflang",
-    "description": "Panth Hreflang — multi-language/multi-region hreflang link tags for Magento 2 with x-default, cross-store CMS/product/category mapping, and admin CRUD.",
+    "description": "Panth Hreflang \u2014 multi-language/multi-region hreflang link tags for Magento 2 with x-default, cross-store CMS/product/category mapping, and admin CRUD.",
     "type": "magento2-module",
-    "version": "1.0.10",
+    "version": "1.0.11",
     "license": "proprietary",
-    "keywords": ["magento2","magento2-module","seo","hreflang","multilingual","panth"],
+    "keywords": [
+        "magento2",
+        "magento2-module",
+        "seo",
+        "hreflang",
+        "multilingual",
+        "panth"
+    ],
     "homepage": "https://kishansavaliya.com",
-    "support": {"email":"kishansavaliyakb@gmail.com","source":"https://kishansavaliya.com"},
-    "authors": [{"name":"Kishan Savaliya","email":"kishansavaliyakb@gmail.com","homepage":"https://kishansavaliya.com","role":"Developer"}],
+    "support": {
+        "email": "kishansavaliyakb@gmail.com",
+        "source": "https://kishansavaliya.com"
+    },
+    "authors": [
+        {
+            "name": "Kishan Savaliya",
+            "email": "kishansavaliyakb@gmail.com",
+            "homepage": "https://kishansavaliya.com",
+            "role": "Developer"
+        }
+    ],
     "require": {
         "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0",
         "mage2kishan/module-core": "^1.0",
@@ -20,7 +37,11 @@
         "magento/module-config": "^101.2"
     },
     "autoload": {
-        "files": ["registration.php"],
-        "psr-4": {"Panth\\Hreflang\\": ""}
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Panth\\Hreflang\\": ""
+        }
     }
 }

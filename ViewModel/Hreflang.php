@@ -119,12 +119,27 @@ class Hreflang implements ArgumentInterface
         $action = (string) $this->request->getFullActionName();
 
         if ($action === 'cms_index_index') {
-            $identifier = (string) $this->scopeConfig->getValue(
+            $configured = (string) $this->scopeConfig->getValue(
                 CmsPageHelper::XML_PATH_HOME_PAGE,
                 ScopeInterface::SCOPE_STORE
             );
-            if ($identifier === '') {
+            if ($configured === '') {
                 return null;
+            }
+            // The admin "Default Pages" picker stores the value as
+            // "<identifier>|<page_id>" whenever more than one CMS page
+            // shares an identifier across stores. The numeric suffix is
+            // the authoritative page id picked in admin — prefer it over
+            // the identifier lookup, which would otherwise miss the row
+            // entirely (the literal string "home|42" never matches a
+            // cms_page.identifier).
+            if (str_contains($configured, '|')) {
+                [$identifier, $explicitId] = explode('|', $configured, 2);
+                if ((int) $explicitId > 0) {
+                    return (int) $explicitId;
+                }
+            } else {
+                $identifier = $configured;
             }
             return $this->lookupCmsPageIdByIdentifier($identifier);
         }

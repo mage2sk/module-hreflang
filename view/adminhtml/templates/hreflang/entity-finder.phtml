@@ -79,7 +79,7 @@ $searchUrl = $block->getSearchUrl();
         function open(type) {
             currentType = type;
             var label = type === 'category' ? 'Categories' : (type === 'cms_page' ? 'CMS Pages' : 'Products');
-            title.textContent = 'Find Entity — ' + label;
+            title.textContent = 'Find Entity - ' + label;
             modal.classList.add('open');
             input.value = '';
             body.innerHTML = '<div class="hf-finder-empty">Enter a search term or press Search to list the first 50.</div>';

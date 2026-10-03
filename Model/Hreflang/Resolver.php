@@ -1,0 +1,434 @@
+<?php
+declare(strict_types=1);
+
+namespace Panth\Hreflang\Model\Hreflang;
+
+use Magento\Catalog\Model\Product\Attribute\Source\Status as ProductStatus;
+use Magento\Catalog\Model\Product\Visibility as ProductVisibility;
+use Magento\Catalog\Model\ResourceModel\Category as CategoryResource;
+use Magento\Catalog\Model\ResourceModel\Product as ProductResource;
+use Magento\Cms\Helper\Page as CmsPageHelper;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Store\Api\Data\StoreInterface;
+use Magento\Store\Api\WebsiteRepositoryInterface;
+use Magento\Store\Model\StoreManagerInterface;
+use Panth\Hreflang\Api\HreflangResolverInterface;
+use Panth\Hreflang\Helper\Config;
+use Panth\Hreflang\Model\Config\Source\CmsRelationMethod;
+use Panth\Hreflang\Model\Config\Source\HreflangScope;
+
+class Resolver implements HreflangResolverInterface
+{
+    private const CMS_ENTITY_TYPES = [self::ENTITY_CMS, 'cms_page'];
+
+    public function __construct(
+        private readonly ResourceConnection $resource,
+        private readonly StoreManagerInterface $storeManager,
+        private readonly WebsiteRepositoryInterface $websiteRepository,
+        private readonly Config $config,
+        private readonly ProductResource $productResource,
+        private readonly CategoryResource $categoryResource
+    ) {
+    }
+
+    public function getAlternates(string $entityType, int $entityId, int $storeId): array
+    {
+        if (!$this->config->isHreflangEnabled($storeId)) {
+            return [];
+        }
+
+        if (in_array($entityType, self::CMS_ENTITY_TYPES, true)) {
+            $method = $this->config->getCmsRelationMethod($storeId);
+            if ($method !== CmsRelationMethod::BY_IDENTIFIER) {
+                return $this->resolveCmsByRelation($method, $entityId, $storeId);
+            }
+        }
+
+        return $this->resolveByGroup($entityType, $entityId, $storeId);
+    }
+
+    public function validateGroup(int $groupId): array
+    {
+        $errors = [];
+        $connection = $this->resource->getConnection();
+        $memberTable = $this->resource->getTableName('panth_seo_hreflang_member');
+
+        $rows = $connection->fetchAll(
+            $connection->select()
+                ->from($memberTable, ['member_id', 'store_id', 'entity_type', 'entity_id', 'locale', 'url', 'is_default'])
+                ->where('group_id = ?', $groupId)
+        );
+        if ($rows === []) {
+            return [sprintf('Group %d has no members.', $groupId)];
+        }
+
+        $locales = [];
+        $defaults = 0;
+        $entityType = null;
+        foreach ($rows as $row) {
+            $locale = strtolower((string) $row['locale']);
+            if (isset($locales[$locale])) {
+                $errors[] = sprintf('Duplicate locale "%s" in group %d.', $locale, $groupId);
+            }
+            $locales[$locale] = true;
+            if ((bool) $row['is_default']) {
+                $defaults++;
+            }
+            $entityType = $entityType ?? (string) $row['entity_type'];
+            if ($entityType !== (string) $row['entity_type']) {
+                $errors[] = sprintf('Mixed entity types in group %d.', $groupId);
+            }
+            if (!filter_var($row['url'], FILTER_VALIDATE_URL)) {
+                $errors[] = sprintf('Invalid URL for member %d: %s', (int) $row['member_id'], (string) $row['url']);
+            }
+        }
+        if ($defaults > 1) {
+            $errors[] = sprintf('Group %d has %d x-default rows (max 1).', $groupId, $defaults);
+        }
+        if (count($locales) < 2) {
+            $errors[] = sprintf('Group %d must contain at least 2 locales for hreflang to be meaningful.', $groupId);
+        }
+
+        return $errors;
+    }
+
+    private function resolveByGroup(string $entityType, int $entityId, int $storeId): array
+    {
+        $connection = $this->resource->getConnection();
+        $memberTable = $this->resource->getTableName('panth_seo_hreflang_member');
+        $groupTable  = $this->resource->getTableName('panth_seo_hreflang_group');
+
+        $entityTypes = in_array($entityType, self::CMS_ENTITY_TYPES, true)
+            ? self::CMS_ENTITY_TYPES
+            : [$entityType];
+
+        $groupId = (int) $connection->fetchOne(
+            $connection->select()
+                ->from(['m' => $memberTable], ['group_id'])
+                ->join(['g' => $groupTable], 'g.group_id = m.group_id', [])
+                ->where('m.entity_type IN (?)', $entityTypes)
+                ->where('m.entity_id = ?', $entityId)
+                ->where('m.store_id = ?', $storeId)
+                ->where('g.is_active = ?', 1)
+                ->limit(1)
+        );
+        if ($groupId <= 0) {
+            return [];
+        }
+
+        $select = $connection->select()
+            ->from($memberTable, ['store_id', 'entity_type', 'entity_id', 'locale', 'url', 'is_default'])
+            ->where('group_id = ?', $groupId);
+
+        $allowedStoreIds = $this->getAllowedStoreIds($storeId);
+        if ($allowedStoreIds !== null) {
+            $select->where('store_id IN (?)', $allowedStoreIds);
+        }
+
+        $rows = array_values(array_filter(
+            $connection->fetchAll($select),
+            fn (array $row): bool => $this->isMemberAvailable($row)
+        ));
+
+        return $this->buildAlternates($rows, $storeId);
+    }
+
+    private function resolveCmsByRelation(string $method, int $entityId, int $storeId): array
+    {
+        $connection = $this->resource->getConnection();
+        $cmsPageTable = $this->resource->getTableName('cms_page');
+        $cmsStoreTable = $this->resource->getTableName('cms_page_store');
+
+        if ($method === CmsRelationMethod::BY_ID) {
+            $matchField = 'page_id';
+            $matchValue = $entityId;
+        } else {
+            $identifier = (string) $connection->fetchOne(
+                $connection->select()
+                    ->from($cmsPageTable, ['identifier'])
+                    ->where('page_id = ?', $entityId)
+                    ->limit(1)
+            );
+            if ($identifier === '') {
+                return [];
+            }
+            $matchField = 'identifier';
+            $matchValue = $identifier;
+        }
+
+        $select = $connection->select()
+            ->from(['p' => $cmsPageTable], ['page_id', 'identifier'])
+            ->join(
+                ['ps' => $cmsStoreTable],
+                'p.page_id = ps.page_id',
+                ['store_id']
+            )
+            ->where('p.is_active = ?', 1)
+            ->where("p.{$matchField} = ?", $matchValue);
+
+        $rows = $connection->fetchAll($select);
+        if ($rows === []) {
+            return [];
+        }
+
+        $allowedStoreIds = $this->getAllowedStoreIds($storeId);
+        $identifiersByStore = [];
+        foreach ($rows as $row) {
+            if ((int) $row['store_id'] !== 0) {
+                continue;
+            }
+            foreach ($this->getFrontendStoreIds() as $frontendStoreId) {
+                $identifiersByStore[$frontendStoreId] = (string) $row['identifier'];
+            }
+        }
+        foreach ($rows as $row) {
+            $relatedStoreId = (int) $row['store_id'];
+            if ($relatedStoreId !== 0) {
+                $identifiersByStore[$relatedStoreId] = (string) $row['identifier'];
+            }
+        }
+        ksort($identifiersByStore);
+
+        $alternates = [];
+        $seen = [];
+
+        foreach ($identifiersByStore as $relatedStoreId => $pageIdentifier) {
+            if ($allowedStoreIds !== null && !in_array($relatedStoreId, $allowedStoreIds, true)) {
+                continue;
+            }
+            $store = $this->getStoreById($relatedStoreId);
+            if ($store === null || !$store->getIsActive()) {
+                continue;
+            }
+
+            $locale = $this->getStoreLocale($relatedStoreId);
+            if (!$this->isValidLocale($locale)) {
+                continue;
+            }
+
+            $key = strtolower($locale);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            $baseUrl = rtrim((string) $store->getBaseUrl(), '/') . '/';
+            $url = $this->isHomePageIdentifier($pageIdentifier, $relatedStoreId)
+                ? $baseUrl
+                : $baseUrl . ltrim($pageIdentifier, '/');
+
+            $alternates[] = [
+                'locale'     => $locale,
+                'url'        => $url,
+                'is_default' => false,
+            ];
+        }
+
+        if (count($alternates) < 2) {
+            return [];
+        }
+
+        if ($this->config->emitHreflangXDefault($storeId)) {
+            $hasDefault = false;
+            foreach ($alternates as $alt) {
+                if ($alt['locale'] === 'x-default') {
+                    $hasDefault = true;
+                    break;
+                }
+            }
+            if (!$hasDefault) {
+                $alternates[] = [
+                    'locale'     => 'x-default',
+                    'url'        => $alternates[0]['url'],
+                    'is_default' => true,
+                ];
+            }
+        }
+
+        return $alternates;
+    }
+
+    private function buildAlternates(array $rows, int $storeId): array
+    {
+        if ($rows === []) {
+            return [];
+        }
+
+        $alternates = [];
+        $seen = [];
+        $defaultUrl = null;
+        $hasExplicitXDefault = false;
+
+        foreach ($rows as $row) {
+            $locale = trim((string) $row['locale']);
+            $url = trim((string) $row['url']);
+            $isDefault = (bool) $row['is_default'];
+            if (!$this->isValidLocale($locale) || !$this->isValidUrl($url)) {
+                continue;
+            }
+            $key = strtolower($locale);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            if ($key === 'x-default') {
+                $hasExplicitXDefault = true;
+            }
+            if ($isDefault && $defaultUrl === null) {
+                $defaultUrl = $url;
+            }
+            $alternates[] = [
+                'locale'     => $locale,
+                'url'        => $url,
+                'is_default' => $isDefault,
+            ];
+        }
+
+        if (count($alternates) < 2) {
+            return [];
+        }
+
+        if (!$hasExplicitXDefault && $this->config->emitHreflangXDefault($storeId)) {
+            $alternates[] = [
+                'locale'     => 'x-default',
+                'url'        => $defaultUrl ?? $alternates[0]['url'],
+                'is_default' => true,
+            ];
+        }
+
+        return $alternates;
+    }
+
+    private function isMemberAvailable(array $row): bool
+    {
+        $memberStoreId = (int) $row['store_id'];
+        $store = $this->getStoreById($memberStoreId);
+        if ($store === null || !$store->getIsActive()) {
+            return false;
+        }
+
+        $entityId = (int) $row['entity_id'];
+        try {
+            return match ((string) $row['entity_type']) {
+                self::ENTITY_PRODUCT  => $this->isProductAvailable($entityId, $store),
+                self::ENTITY_CATEGORY => $this->isCategoryAvailable($entityId, $store),
+                default               => true,
+            };
+        } catch (\Throwable) {
+            return true;
+        }
+    }
+
+    private function isProductAvailable(int $productId, StoreInterface $store): bool
+    {
+        $websiteIds = array_map('intval', (array) $this->productResource->getWebsiteIds($productId));
+        if (!in_array((int) $store->getWebsiteId(), $websiteIds, true)) {
+            return false;
+        }
+
+        $storeId = (int) $store->getId();
+        $status = $this->productResource->getAttributeRawValue($productId, 'status', $storeId);
+        if ((int) $status !== ProductStatus::STATUS_ENABLED) {
+            return false;
+        }
+
+        $visibility = $this->productResource->getAttributeRawValue($productId, 'visibility', $storeId);
+
+        return (int) $visibility !== ProductVisibility::VISIBILITY_NOT_VISIBLE;
+    }
+
+    private function isCategoryAvailable(int $categoryId, StoreInterface $store): bool
+    {
+        $isActive = $this->categoryResource->getAttributeRawValue($categoryId, 'is_active', (int) $store->getId());
+        if ((int) $isActive !== 1) {
+            return false;
+        }
+
+        $rootCategoryId = (int) $store->getRootCategoryId();
+        if ($rootCategoryId <= 0) {
+            return true;
+        }
+
+        $connection = $this->resource->getConnection();
+        $path = (string) $connection->fetchOne(
+            $connection->select()
+                ->from($this->resource->getTableName('catalog_category_entity'), ['path'])
+                ->where('entity_id = ?', $categoryId)
+                ->limit(1)
+        );
+
+        return str_contains('/' . $path . '/', '/' . $rootCategoryId . '/');
+    }
+
+    private function isValidLocale(string $locale): bool
+    {
+        return $locale !== '' && preg_match(self::HREFLANG_CODE_PATTERN, $locale) === 1;
+    }
+
+    private function isValidUrl(string $url): bool
+    {
+        if ($url === '') {
+            return false;
+        }
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+
+        return in_array($scheme, ['http', 'https'], true) && (string) parse_url($url, PHP_URL_HOST) !== '';
+    }
+
+    private function isHomePageIdentifier(string $identifier, int $storeId): bool
+    {
+        $configured = (string) $this->config->getValue(CmsPageHelper::XML_PATH_HOME_PAGE, $storeId);
+        if ($configured === '') {
+            return false;
+        }
+        [$homeIdentifier] = explode('|', $configured, 2);
+
+        return $homeIdentifier !== '' && $homeIdentifier === $identifier;
+    }
+
+    private function getFrontendStoreIds(): array
+    {
+        $ids = [];
+        foreach ($this->storeManager->getStores(false) as $store) {
+            $ids[] = (int) $store->getId();
+        }
+
+        return $ids;
+    }
+
+    private function getAllowedStoreIds(int $storeId): ?array
+    {
+        $scope = $this->config->getHreflangScope($storeId);
+        if ($scope !== HreflangScope::SCOPE_WEBSITE) {
+            return null;
+        }
+
+        try {
+            $store = $this->storeManager->getStore($storeId);
+            $websiteId = (int) $store->getWebsiteId();
+            $website = $this->websiteRepository->getById($websiteId);
+            return array_map('intval', $website->getStoreIds());
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function getStoreLocale(int $storeId): string
+    {
+        $locale = (string) $this->config->getValue('general/locale/code', $storeId);
+        if ($locale === '') {
+            return '';
+        }
+
+        return str_replace('_', '-', $locale);
+    }
+
+    private function getStoreById(int $storeId): ?StoreInterface
+    {
+        try {
+            return $this->storeManager->getStore($storeId);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+}

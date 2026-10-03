@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <panth_hreflang>
+            <hreflang>
+                <enabled>1</enabled>
+                <emit_x_default>1</emit_x_default>
+                <hreflang_scope>website</hreflang_scope>
+                <cms_relation_method>by_url_key</cms_relation_method>
+            </hreflang>
+        </panth_hreflang>
+    </default>
+</config>

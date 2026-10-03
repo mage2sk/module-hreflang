@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">panth_hreflang_hreflang_form.panth_hreflang_hreflang_form_data_source</item>
+        </item>
+        <item name="template" xsi:type="string">templates/form/collapsible</item>
+    </argument>
+    <settings>
+        <buttons>
+            <button name="delete" class="Panth\Hreflang\Block\Adminhtml\GenericDeleteButton"/>
+            <button name="save_and_continue" class="Panth\Hreflang\Block\Adminhtml\GenericSaveAndContinueButton"/>
+            <button name="save" class="Panth\Hreflang\Block\Adminhtml\GenericSaveButton"/>
+            <button name="back" class="Panth\Hreflang\Block\Adminhtml\GenericBackButton"/>
+        </buttons>
+        <namespace>panth_hreflang_hreflang_form</namespace>
+        <dataScope>data</dataScope>
+        <deps>
+            <dep>panth_hreflang_hreflang_form.panth_hreflang_hreflang_form_data_source</dep>
+        </deps>
+    </settings>
+    <dataSource name="panth_hreflang_hreflang_form_data_source">
+        <argument name="data" xsi:type="array">
+            <item name="js_config" xsi:type="array">
+                <item name="component" xsi:type="string">Magento_Ui/js/form/provider</item>
+            </item>
+        </argument>
+        <settings>
+            <submitUrl path="panth_hreflang/hreflang/save"/>
+        </settings>
+        <dataProvider class="Panth\Hreflang\Ui\Component\Form\DataProvider\HreflangFormDataProvider" name="panth_hreflang_hreflang_form_data_source">
+            <settings>
+                <requestFieldName>id</requestFieldName>
+                <primaryFieldName>group_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+    <fieldset name="general">
+        <settings>
+            <label translate="true">General</label>
+        </settings>
+        <field name="group_id" formElement="input">
+            <settings>
+                <visible>false</visible>
+                <dataType>text</dataType>
+            </settings>
+        </field>
+        <field name="entity_type" formElement="select" sortOrder="5">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="source" xsi:type="string">hreflang_group</item>
+                </item>
+            </argument>
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Entity Type</label>
+                <dataScope>entity_type</dataScope>
+                <notice translate="true">The type of content this hreflang group maps across stores. Members are interpreted as this type on save.</notice>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="Panth\Hreflang\Model\Config\Source\EntityType"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+        <field name="code" formElement="input" sortOrder="10">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Group Code</label>
+                <dataScope>code</dataScope>
+                <notice translate="true">Internal identifier - admin-only reference, not rendered on the storefront.</notice>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+        </field>
+        <field name="notes" formElement="textarea" sortOrder="20">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Notes</label>
+                <dataScope>notes</dataScope>
+            </settings>
+        </field>
+        <field name="is_active" formElement="select" sortOrder="30">
+            <settings>
+                <dataType>number</dataType>
+                <label translate="true">Active</label>
+                <dataScope>is_active</dataScope>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="Magento\Config\Model\Config\Source\Yesno"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+    </fieldset>
+    <fieldset name="members">
+        <settings>
+            <label translate="true">Members</label>
+            <collapsible>false</collapsible>
+        </settings>
+        <container name="members_hint" component="Magento_Ui/js/form/components/html" sortOrder="1">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="content" xsi:type="string" translate="true"><![CDATA[<p style="margin:0 0 1em 0;color:#666;">Add one row per store view that participates in this hreflang group. <strong>Entity ID</strong> is the product, category or CMS page ID on that store view. <strong>Locale</strong> is optional (BCP 47, e.g. en-GB); leave it blank to use the store's Magento locale. Leave the <strong>URL</strong> blank to auto-resolve from the entity's URL rewrite on save. Exactly one row should be marked <strong>Is Default</strong> - that row's URL becomes the <code>x-default</code> alternate emitted on the storefront.</p>]]></item>
+                    <item name="additionalClasses" xsi:type="string">admin__field-wide</item>
+                </item>
+            </argument>
+        </container>
+        <htmlContent name="entity_finder" sortOrder="5">
+            <block class="Panth\Hreflang\Block\Adminhtml\Hreflang\Edit\EntityFinder" name="panth_hreflang_entity_finder"/>
+        </htmlContent>
+        <dynamicRows name="hreflang_members" sortOrder="10">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="addButtonLabel" xsi:type="string" translate="true">Add Member</item>
+                    <item name="additionalClasses" xsi:type="string">admin__field-wide panth-hreflang-members</item>
+                    <item name="componentType" xsi:type="string">dynamicRows</item>
+                    <item name="recordTemplate" xsi:type="string">record</item>
+                    <item name="deleteProperty" xsi:type="string">is_removed</item>
+                    <item name="deleteValue" xsi:type="string">1</item>
+                    <item name="columnsHeader" xsi:type="boolean">true</item>
+                    <item name="addButton" xsi:type="boolean">true</item>
+                    <item name="dndConfig" xsi:type="array">
+                        <item name="enabled" xsi:type="boolean">false</item>
+                    </item>
+                </item>
+            </argument>
+            <container name="record" component="Magento_Ui/js/dynamic-rows/record">
+                <argument name="data" xsi:type="array">
+                    <item name="config" xsi:type="array">
+                        <item name="isTemplate" xsi:type="boolean">true</item>
+                        <item name="is_collection" xsi:type="boolean">true</item>
+                        <item name="componentType" xsi:type="string">container</item>
+                    </item>
+                </argument>
+                <field name="member_id" formElement="input">
+                    <settings>
+                        <dataType>text</dataType>
+                        <visible>false</visible>
+                        <dataScope>member_id</dataScope>
+                    </settings>
+                </field>
+                <field name="store_id" formElement="select" sortOrder="10">
+                    <settings>
+                        <dataType>text</dataType>
+                        <label translate="true">Store View</label>
+                        <dataScope>store_id</dataScope>
+                        <validation>
+                            <rule name="required-entry" xsi:type="boolean">true</rule>
+                        </validation>
+                    </settings>
+                    <formElements>
+                        <select>
+                            <settings>
+                                <options class="Magento\Config\Model\Config\Source\Store"/>
+                            </settings>
+                        </select>
+                    </formElements>
+                </field>
+                <field name="entity_id" formElement="input" sortOrder="20">
+                    <settings>
+                        <dataType>text</dataType>
+                        <label translate="true">Entity ID</label>
+                        <dataScope>entity_id</dataScope>
+                        <validation>
+                            <rule name="required-entry" xsi:type="boolean">true</rule>
+                            <rule name="validate-digits" xsi:type="boolean">true</rule>
+                        </validation>
+                    </settings>
+                </field>
+                <field name="locale" formElement="input" sortOrder="30">
+                    <settings>
+                        <dataType>text</dataType>
+                        <label translate="true">Locale</label>
+                        <dataScope>locale</dataScope>
+                    </settings>
+                </field>
+                <field name="url" formElement="input" sortOrder="40">
+                    <settings>
+                        <dataType>text</dataType>
+                        <label translate="true">URL</label>
+                        <dataScope>url</dataScope>
+                        <additionalClasses>
+                            <class name="panth-hreflang-url">true</class>
+                        </additionalClasses>
+                    </settings>
+                </field>
+                <field name="is_default" formElement="checkbox" sortOrder="50">
+                    <settings>
+                        <dataType>text</dataType>
+                        <label translate="true">Is Default</label>
+                        <dataScope>is_default</dataScope>
+                    </settings>
+                    <formElements>
+                        <checkbox>
+                            <settings>
+                                <valueMap>
+                                    <map name="false" xsi:type="string">0</map>
+                                    <map name="true" xsi:type="string">1</map>
+                                </valueMap>
+                                <prefer>toggle</prefer>
+                            </settings>
+                        </checkbox>
+                    </formElements>
+                </field>
+            </container>
+        </dynamicRows>
+    </fieldset>
+</form>

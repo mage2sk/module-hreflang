@@ -1,0 +1,12 @@
+.panth-hreflang-members .admin__control-table {
+    width: 100%;
+    table-layout: auto;
+}
+.panth-hreflang-members .admin__control-table td.panth-hreflang-url,
+.panth-hreflang-members .admin__control-table td .panth-hreflang-url {
+    min-width: 320px;
+    width: 40%;
+}
+.panth-hreflang-members .admin__control-table .panth-hreflang-url input.admin__control-text {
+    width: 100%;
+}

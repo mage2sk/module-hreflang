@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <!-- ============================================================ -->
+    <!-- panth_seo_hreflang_group / _member                             -->
+    <!-- ============================================================ -->
+    <table name="panth_seo_hreflang_group" resource="default" engine="innodb" comment="Hreflang groups">
+        <column xsi:type="int" name="group_id" unsigned="true" nullable="false" identity="true" comment="Group ID"/>
+        <column xsi:type="varchar" name="code" length="64" nullable="false" comment="Group code"/>
+        <column xsi:type="varchar" name="entity_type" length="32" nullable="false" comment="Entity type"/>
+        <column xsi:type="text" name="notes" nullable="true" comment="Notes"/>
+        <column xsi:type="boolean" name="is_active" nullable="false" default="true" comment="Active"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Created at"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP" comment="Updated at"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="group_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="PANTH_SEO_HREFLANG_GROUP_UNQ_CODE">
+            <column name="code"/>
+        </constraint>
+    </table>
+
+    <table name="panth_seo_hreflang_member" resource="default" engine="innodb" comment="Hreflang group members">
+        <column xsi:type="int" name="member_id" unsigned="true" nullable="false" identity="true" comment="Member ID"/>
+        <column xsi:type="int" name="group_id" unsigned="true" nullable="false" comment="Group ID"/>
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" default="0" comment="Store ID"/>
+        <column xsi:type="varchar" name="entity_type" length="32" nullable="false" comment="Entity type"/>
+        <column xsi:type="int" name="entity_id" unsigned="true" nullable="false" comment="Entity ID"/>
+        <column xsi:type="varchar" name="locale" length="16" nullable="false" comment="Locale tag (e.g. en-US, x-default)"/>
+        <column xsi:type="varchar" name="url" length="1024" nullable="false" comment="Alternate URL"/>
+        <column xsi:type="boolean" name="is_default" nullable="false" default="false" comment="x-default flag"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="member_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="PANTH_SEO_HREFLANG_MEMBER_GROUP_ID"
+                    table="panth_seo_hreflang_member" column="group_id"
+                    referenceTable="panth_seo_hreflang_group" referenceColumn="group_id" onDelete="CASCADE"/>
+        <constraint xsi:type="foreign" referenceId="PANTH_SEO_HREFLANG_MEMBER_STORE_ID"
+                    table="panth_seo_hreflang_member" column="store_id"
+                    referenceTable="store" referenceColumn="store_id" onDelete="CASCADE"/>
+        <index referenceId="PANTH_SEO_HREFLANG_MEMBER_IDX_ENTITY" indexType="btree">
+            <column name="entity_type"/>
+            <column name="entity_id"/>
+            <column name="store_id"/>
+        </index>
+    </table>
+
+</schema>

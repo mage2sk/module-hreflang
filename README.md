@@ -183,7 +183,7 @@ The tables `panth_seo_hreflang_group` and `panth_seo_hreflang_member`, the `pant
 
 ## License
 
-Proprietary, as declared in `composer.json`. The package is published on Packagist and can be installed with Composer; see the product page for the terms of use.
+Free and open source under the MIT License. See [LICENSE.txt](LICENSE.txt).
 
 ## Changelog
 
